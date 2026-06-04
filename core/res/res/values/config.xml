@@ -2676,7 +2676,7 @@
 
     <!-- Whether the system enables per-display focus. If the system has the input method for each
          display, this value should be true. -->
-    <bool name="config_perDisplayFocusEnabled">false</bool>
+    <bool name="config_perDisplayFocusEnabled">true</bool>
 
     <!-- Whether to use the system motion prediction model. Only set this value to true after
          confirming that the model works well on your device. -->

@@ -1027,8 +1027,7 @@ class DatabaseHelper extends SQLiteOpenHelper {
                 if (c == null || c.getCount() == 0) {
                     stmt = db.compileStatement("INSERT INTO system(name,value)"
                             + " VALUES(?,?);");
-                    loadBooleanSetting(stmt, Settings.System.LOCKSCREEN_DISABLED,
-                            1);
+                    loadSetting(stmt, Settings.System.LOCKSCREEN_DISABLED, "1");
                 }
                 db.setTransactionSuccessful();
             } finally {
@@ -2211,8 +2210,7 @@ class DatabaseHelper extends SQLiteOpenHelper {
             if (SystemProperties.getBoolean("ro.lockscreen.disable.default", false) == true) {
                 loadSetting(stmt, Settings.System.LOCKSCREEN_DISABLED, "1");
             } else {
-                loadBooleanSetting(stmt, Settings.System.LOCKSCREEN_DISABLED,
-                        1);
+                loadSetting(stmt, Settings.System.LOCKSCREEN_DISABLED, "1");
             }
 
             loadBooleanSetting(stmt, Settings.Secure.SCREENSAVER_ENABLED,

@@ -145,6 +145,7 @@ import com.android.server.input.debug.FocusEventDebugView;
 import com.android.server.input.debug.TouchpadDebugViewController;
 import com.android.server.policy.WindowManagerPolicy;
 import com.android.server.wm.WindowManagerInternal;
+import android.os.SystemProperties;
 
 import libcore.io.IoUtils;
 
@@ -2754,17 +2755,28 @@ public class InputManagerService extends IInputManager.Stub
      * directory.
      */
     private static Map<String, Integer> loadStaticInputPortAssociations() {
-        File baseDir = Environment.getOdmDirectory();
-        File confFile = new File(baseDir, PORT_ASSOCIATIONS_PATH);
+
+
+        String model = SystemProperties.get("vendor.hw.model", "UNKNOWN");
+	Slog.e(TAG, "Model: '" + model + "'");
+	String path = PORT_ASSOCIATIONS_PATH;
+
+	if (model != null && !model.isEmpty() && !model.equals("UNKNOWN")) {
+            path = PORT_ASSOCIATIONS_PATH.replace(".xml", "-" + model + ".xml");
+	}
+
+	final File baseDir = Environment.getVendorDirectory();
+        File confFile = new File(baseDir, path);
 
         if (!confFile.exists()) {
-            baseDir = Environment.getVendorDirectory();
             confFile = new File(baseDir, PORT_ASSOCIATIONS_PATH);
         }
 
         try (final InputStream stream = new FileInputStream(confFile)) {
+            Slog.e(TAG, "File found and parsed on '" + confFile.getAbsolutePath() + "'");
             return ConfigurationProcessor.processInputPortAssociations(stream);
         } catch (FileNotFoundException e) {
+            Slog.e(TAG, "No file in place '" + confFile.getAbsolutePath() + "'");
             // Most of the time, file will not exist, which is expected.
         } catch (Exception e) {
             Slog.e(TAG, "Could not parse '" + confFile.getAbsolutePath() + "'", e);

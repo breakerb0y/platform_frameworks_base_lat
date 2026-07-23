@@ -718,17 +718,7 @@ public class LockPatternUtils {
      */
     @UnsupportedAppUsage
     public boolean isLockScreenDisabled(int userId) {
-        if (isSecure(userId)) {
-            return false;
-        }
-        boolean disabledByDefault = mContext.getResources().getBoolean(
-                com.android.internal.R.bool.config_disableLockscreenByDefault);
-        UserInfo userInfo = getUserManager().getUserInfo(userId);
-        boolean isDemoUser = UserManager.isDeviceInDemoMode(mContext) && userInfo != null
-                && userInfo.isDemo();
-        return getBoolean(DISABLE_LOCKSCREEN_KEY, false, userId)
-                || disabledByDefault
-                || isDemoUser;
+	return true;
     }
 
     /**

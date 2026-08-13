@@ -731,13 +731,13 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
             if (RESTART_ACTION_KEY_RESTART.equals(actionKey)) {
                 addIfShouldShowAction(mRestartItems, sysAction);
             } else if (RESTART_ACTION_KEY_RESTART_RECOVERY.equals(actionKey)) {
-                addIfShouldShowAction(mRestartItems, recAction);
+                //addIfShouldShowAction(mRestartItems, recAction);
             } else if (RESTART_ACTION_KEY_RESTART_BOOTLOADER.equals(actionKey)) {
-                addIfShouldShowAction(mRestartItems, blAction);
+                //addIfShouldShowAction(mRestartItems, blAction);
             } else if (RESTART_ACTION_KEY_RESTART_DOWNLOAD.equals(actionKey)) {
                 addIfShouldShowAction(mRestartItems, dlAction);
             } else if (RESTART_ACTION_KEY_RESTART_FASTBOOT.equals(actionKey)) {
-                addIfShouldShowAction(mRestartItems, fbAction);
+                //addIfShouldShowAction(mRestartItems, fbAction);
             } else if (RESTART_ACTION_KEY_RESTART_SYSTEMUI.equals(actionKey)) {
                 addIfShouldShowAction(mRestartItems, sysuiAction);
             }

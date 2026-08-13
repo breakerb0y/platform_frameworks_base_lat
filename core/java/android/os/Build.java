@@ -143,7 +143,16 @@ public class Build {
     public static final String BRAND_FOR_ATTESTATION = getVendorDeviceIdProperty("brand");
 
     /** The end-user-visible name for the end product. */
-    public static final String MODEL = getString("ro.product.model");
+    public static final String MODEL = getGPModel();
+
+    private static String getGPModel() {
+        String hwModel = SystemProperties.get("vendor.hw.model", "");
+        if (!TextUtils.isEmpty(hwModel)) {
+            return hwModel;
+        }
+
+        return getString("ro.product.model");
+    }
 
     /**
      * The product model for attestation. In non-default builds (like the AOSP build) the value of

@@ -191,13 +191,15 @@ public class ImageWallpaper extends WallpaperService {
             }
             mWallpaperManager = getDisplayContext().getSystemService(WallpaperManager.class);
             mSurfaceHolder = surfaceHolder;
-            Rect dimensions = !multiCrop()
-                    ? mWallpaperManager.peekBitmapDimensions(getSourceFlag(), true)
-                    : mWallpaperManager.peekBitmapDimensionsAsUser(getSourceFlag(), true,
-                    mUserTracker.getUserId());
-            int width = Math.max(MIN_SURFACE_WIDTH, dimensions.width());
-            int height = Math.max(MIN_SURFACE_HEIGHT, dimensions.height());
-            mSurfaceHolder.setFixedSize(width, height);
+            Rect windowBounds = getDisplayContext()
+            .getSystemService(WindowManager.class)
+            .getCurrentWindowMetrics()
+            .getBounds();
+
+	    int width = Math.max(MIN_SURFACE_WIDTH, windowBounds.width());
+	    int height = Math.max(MIN_SURFACE_HEIGHT, windowBounds.height());
+
+	    mSurfaceHolder.setFixedSize(width, height);
 
             getDisplayContext().getSystemService(DisplayManager.class)
                     .registerDisplayListener(this, null);
@@ -308,29 +310,53 @@ public class ImageWallpaper extends WallpaperService {
             }
         }
 
-        @VisibleForTesting
-        void drawFrameOnCanvas(Bitmap bitmap) {
-            Trace.beginSection("ImageWallpaper.CanvasEngine#drawFrame");
-            Surface surface = mSurfaceHolder.getSurface();
-            Canvas canvas = null;
-            try {
-                canvas = mWideColorGamut
-                        ? surface.lockHardwareWideColorGamutCanvas()
-                        : surface.lockHardwareCanvas();
-            } catch (IllegalStateException e) {
-                Log.w(TAG, "Unable to lock canvas", e);
-            }
-            if (canvas != null) {
-                Rect dest = mSurfaceHolder.getSurfaceFrame();
-                try {
-                    canvas.drawBitmap(bitmap, null, dest, null);
-                    mDrawn = true;
-                } finally {
-                    surface.unlockCanvasAndPost(canvas);
-                }
-            }
-            Trace.endSection();
-        }
+	@VisibleForTesting
+	void drawFrameOnCanvas(Bitmap bitmap) {
+	    Trace.beginSection("ImageWallpaper.CanvasEngine#drawFrame");
+	    Surface surface = mSurfaceHolder.getSurface();
+	    Canvas canvas = null;
+	    try {
+	        canvas = mWideColorGamut
+	                ? surface.lockHardwareWideColorGamutCanvas()
+	                : surface.lockHardwareCanvas();
+	    } catch (IllegalStateException e) {
+	        Log.w(TAG, "Unable to lock canvas", e);
+	    }
+	    if (canvas != null) {
+	        try {
+	            Rect dest = mSurfaceHolder.getSurfaceFrame();
+	            Rect src = calculateCenterCropSrc(bitmap, dest.width(), dest.height());
+
+	            canvas.drawColor(android.graphics.Color.BLACK);
+	            canvas.drawBitmap(bitmap, src, dest, null);
+
+	            mDrawn = true;
+	        } finally {
+	            surface.unlockCanvasAndPost(canvas);
+	        }
+	    }
+	    Trace.endSection();
+	}
+
+	private Rect calculateCenterCropSrc(Bitmap bitmap, int viewWidth, int viewHeight) {
+	    int bw = bitmap.getWidth();
+	    int bh = bitmap.getHeight();
+
+	    float scale;
+	    int srcWidth = bw;
+	    int srcHeight = bh;
+
+	    if (bw * viewHeight > viewWidth * bh) {
+	        srcWidth = bh * viewWidth / viewHeight;
+	    } else {
+	        srcHeight = bw * viewHeight / viewWidth;
+	    }
+
+	    int srcLeft = (bw - srcWidth) / 2;
+	    int srcTop = (bh - srcHeight) / 2;
+
+	    return new Rect(srcLeft, srcTop, srcLeft + srcWidth, srcTop + srcHeight);
+	}
 
         @VisibleForTesting
         boolean isBitmapLoaded() {

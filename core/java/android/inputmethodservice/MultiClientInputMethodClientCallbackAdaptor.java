@@ -42,10 +42,10 @@ import com.android.internal.inputmethod.CancellationGroup;
 import com.android.internal.inputmethod.IInputMethodSession;
 import com.android.internal.inputmethod.IMultiClientInputMethodSession;
 import com.android.internal.inputmethod.IRemoteInputConnection;
+import com.android.internal.inputmethod.StartInputFlags;
 import com.android.internal.os.SomeArgs;
 import com.android.internal.util.function.pooled.PooledLambda;
 import android.view.inputmethod.InputConnection;
-//import android.view.inputmethod.InputConnectionWrapper;
 
 import java.lang.ref.WeakReference;
 
@@ -191,8 +191,24 @@ final class MultiClientInputMethodClientCallbackAdaptor {
 	}
 
 	@Override
-	public void invalidateInput(EditorInfo editorInfo, IRemoteInputConnection inputConnection, int sessionId) {
-	}
+	public void invalidateInput(EditorInfo editorInfo, IRemoteInputConnection inputConnection,
+                int sessionId) {
+            // Since Android 14 the client bumps its input session ID and tells the IME directly.
+            // The client drops every command that still carries the old session ID, so the IME
+            // must switch to a connection that uses the new one.
+            Log.i(TAG, "invalidateInput sessionId=" + sessionId);
+            synchronized (mSessionLock) {
+                if (mCallbackImpl == null || mHandler == null) {
+                    return;
+                }
+                final SomeArgs args = SomeArgs.obtain();
+                args.arg1 = inputConnection;
+                args.arg2 = editorInfo;
+                args.argi1 = sessionId;
+                mHandler.sendMessage(PooledLambda.obtainMessage(
+                        CallbackImpl::invalidateInput, mCallbackImpl, args));
+            }
+        }
 
         @Override
         public void updateExtractedText(int token, ExtractedText text) {
@@ -323,7 +339,6 @@ final class MultiClientInputMethodClientCallbackAdaptor {
                     return;
                 }
                 final SomeArgs args = SomeArgs.obtain();
-
                 // No InputMethodService exists in a multi-client IME, so the internal holder is empty.
                 // RemoteInputConnection null-checks it before use.
                 final WeakReference<InputMethodServiceInternal> noIms = new WeakReference<>(null);
@@ -331,7 +346,6 @@ final class MultiClientInputMethodClientCallbackAdaptor {
 			args.arg1 = (inputContext == null) ? null
                         : new RemoteInputConnection(noIms, inputContext,
                                 mCancellationGroupOnFinishSession);
-
 			args.arg2 = editorInfo;
 			args.argi1 = controlFlags;
 			args.argi2 = softInputMode;
@@ -444,9 +458,46 @@ final class MultiClientInputMethodClientCallbackAdaptor {
 		final int startInputFlags = args.argi1;
 		final int softInputMode = args.argi2;
 		final int windowHandle = args.argi3;
+		mLastStartInputFlags = startInputFlags;
+		mLastSoftInputMode = softInputMode;
+		mLastWindowHandle = windowHandle;
+		mHasStarted = editorInfo != null && inputConnection != null;
 
 		mOriginalCallback.onStartInputOrWindowGainedFocus(
         		inputConnection, editorInfo, startInputFlags, softInputMode, windowHandle);
+            } finally {
+                args.recycle();
+            }
+        }
+
+        private int mLastStartInputFlags;
+        private int mLastSoftInputMode;
+        private int mLastWindowHandle;
+        private boolean mHasStarted;
+
+        void invalidateInput(SomeArgs args) {
+            try {
+                if (mFinished || !mHasStarted) {
+                    return;
+                }
+                final IRemoteInputConnection remote = (IRemoteInputConnection) args.arg1;
+                final EditorInfo editorInfo = (EditorInfo) args.arg2;
+                final int sessionId = args.argi1;
+                if (remote == null || editorInfo == null) {
+                    return;
+                }
+                final WeakReference<InputMethodServiceInternal> noIms = new WeakReference<>(null);
+                final RemoteInputConnection base = new RemoteInputConnection(
+                        noIms, remote, mCallbackAdaptor.mCancellationGroup);
+                final InputConnection connection = new RemoteInputConnection(base, sessionId);
+                // Replay as a restart on the same window, but do not change the visibility.
+                final int softInputMode =
+                        (mLastSoftInputMode & ~android.view.WindowManager.LayoutParams
+                                .SOFT_INPUT_MASK_STATE)
+                        | android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_UNCHANGED;
+                mOriginalCallback.onStartInputOrWindowGainedFocus(connection, editorInfo,
+                        mLastStartInputFlags & ~StartInputFlags.INITIAL_CONNECTION,
+                        softInputMode, mLastWindowHandle);
             } finally {
                 args.recycle();
             }

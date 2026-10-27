@@ -35,20 +35,20 @@ public class InputMethodSystemProperty {
      * System property key for debugging purpose. The value must be either empty or a valid
      * (flattened) component name of the multi-client IME.
      *
-     * <p>This value will be ignored when {@link Build#IS_DEBUGGABLE} returns {@code false}</p>
+     * <p>Writable at run time (e.g. {@code adb shell setprop}) and persisted across reboots.
+     * It is read once when system_server starts, so a reboot is needed for a change to take
+     * effect. Set it to an empty string to switch the multi-client IME off again. It is honored
+     * on every build type, not only on debuggable builds.</p>
      */
     private static final String PROP_DEBUG_MULTI_CLIENT_IME = "persist.debug.multi_client_ime";
 
     @Nullable
     private static ComponentName getMultiClientImeComponentName() {
-        if (Build.IS_DEBUGGABLE) {
-            // If debuggable, allow developers to override the multi-client IME component name
-            // with a different (writable) key.
-            final ComponentName debugIme = ComponentName.unflattenFromString(
-                    SystemProperties.get(PROP_DEBUG_MULTI_CLIENT_IME, ""));
-            if (debugIme != null) {
-                return debugIme;
-            }
+        // The writable persist property takes precedence over the read-only product default.
+        final ComponentName debugIme = ComponentName.unflattenFromString(
+                SystemProperties.get(PROP_DEBUG_MULTI_CLIENT_IME, ""));
+        if (debugIme != null) {
+            return debugIme;
         }
         return ComponentName.unflattenFromString(
                 SystemProperties.get(PROP_PROD_MULTI_CLIENT_IME, ""));

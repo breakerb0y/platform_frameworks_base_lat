@@ -1459,6 +1459,7 @@ public final class MultiClientInputMethodManagerService {
                     return;
                 }
                 try {
+					Slog.i(TAG, "setActive clientId=" + clientId + " active=" + active);
                     clientInfo.mClient.setActive(active, false /* fullscreen */);
                 } catch (RemoteException e) {
                     return;
@@ -1594,6 +1595,7 @@ public final class MultiClientInputMethodManagerService {
                     case InputMethodClientState.READY_TO_SEND_FIRST_BIND_RESULT:
                     case InputMethodClientState.ALREADY_SENT_BIND_RESULT:
                         try {
+							Slog.i(TAG, "showSoftInput clientId=" + clientInfo.mClientId);
                             clientInfo.mMSInputMethodSession.showSoftInput(flags, resultReceiver);
                             if (mWindowManagerInternal != null) {
                                 mWindowManagerInternal.showImePostLayout(windowToken, statsToken);
@@ -1645,6 +1647,7 @@ public final class MultiClientInputMethodManagerService {
                     case InputMethodClientState.READY_TO_SEND_FIRST_BIND_RESULT:
                     case InputMethodClientState.ALREADY_SENT_BIND_RESULT:
                         try {
+							Slog.i(TAG, "hideSoftInput clientId=" + clientInfo.mClientId);
                             clientInfo.mMSInputMethodSession.hideSoftInput(flags, resultReceiver);
                         } catch (RemoteException e) {
                         }
@@ -1682,6 +1685,11 @@ public final class MultiClientInputMethodManagerService {
             
             final int callingUid = Binder.getCallingUid();
             final int callingPid = Binder.getCallingPid();
+
+			Slog.i(TAG, "startInput ENTRY uid=" + callingUid + " reason=" + startInputReason
+					+ " flags=" + startInputFlags + " editorInfo=" + (editorInfo != null)
+					+ " inputContext=" + (inputContext != null)
+					+ " windowToken=" + (windowToken != null) + " userId=" + userId);
             
             if (client == null) {
                 return new InputBindResult(
@@ -1709,6 +1717,7 @@ public final class MultiClientInputMethodManagerService {
             synchronized (data.mLock) {
                 final InputMethodClientInfo clientInfo = data.getClientLocked(client);
                 if (clientInfo == null) {
+					Slog.w(TAG, "startInput EARLY-RETURN: unknown client");
                     return new InputBindResult(
                             InputBindResult.ResultCode.ERROR_NULL,
                             null, null, null, null, 0, false);
@@ -1727,6 +1736,7 @@ public final class MultiClientInputMethodManagerService {
                     case PerUserState.SERVICE_RECOGNIZED:
                     case PerUserState.WAITING_SERVICE_CONNECTED:
                     case PerUserState.UNBIND_CALLED:
+						Slog.w(TAG, "startInput EARLY-RETURN: IME_NOT_CONNECTED state=" + data.mState);
                         return InputBindResult.IME_NOT_CONNECTED;
                     case PerUserState.SERVICE_CONNECTED:
                         break;
@@ -1745,10 +1755,19 @@ public final class MultiClientInputMethodManagerService {
                 }
 
                 if (!checkFocus(clientInfo.mUid, clientInfo.mPid, clientInfo.mSelfReportedDisplayId)) {
+					Slog.w(TAG, "startInput EARLY-RETURN: NOT_IME_TARGET_WINDOW uid="
+						+ clientInfo.mUid + " pid=" + clientInfo.mPid
+						+ " display=" + clientInfo.mSelfReportedDisplayId);
                     return InputBindResult.NOT_IME_TARGET_WINDOW;
                 }
 
                 int missingMethods = 0; 
+
+				Slog.i(TAG, "startInput clientId=" + clientInfo.mClientId
+						+ " clientState=" + clientInfo.mState
+						+ " editorInfo=" + (editorInfo != null)
+						+ " inputContext=" + (inputContext != null)
+						+ " flags=" + startInputFlags + " reason=" + startInputReason);
 
                 if (editorInfo == null) {
                     switch (clientInfo.mState) {
